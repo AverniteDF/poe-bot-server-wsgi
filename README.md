@@ -21,7 +21,7 @@ To set up your own server bot (or "bot server" as they're called in Poe's API do
 - Open the "/poe-bot-server" folder
 - Replace the files you see there with the project files of this repo
 - Go back the "Setup Python App" page and bring up the details of your newly created web app (you may need to click the "Edit" button)
-- Near the top of the page you will see "To enter to virtual environment, run the command:" - copy that command to the clipboard
+- Near the top of the page you will see "To enter to virtual environment, run the command: <command>" - copy that command to the clipboard
 - SSH into your shared hosting account (by using PuTTY for example)
 - Paste that command into the terminal
 - Enter the command `pip install -r requirements.txt` to install the packages needed for the project
