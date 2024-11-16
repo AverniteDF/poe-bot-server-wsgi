@@ -8,7 +8,7 @@ To set up your own server bot (or "bot server" as they are called in Poe's API d
 1. A means of hosting a Python web application (e.g., shared hosting account with cPanel)
 2. An account on Poe that allows you to create server bots (poe.com/create_bot).
 
-Step 1. Setting up a Python web application:
+Part 1 - Setting up a Python web application:
    - Log into cPanel and navigate to "Setup Python App"
    - Click "Create Application"
    - Select the latest version of Python
@@ -30,14 +30,14 @@ Step 1. Setting up a Python web application:
    - Note: You will need to edit the `.env` file but you need to do Step #2 (below) first
 
 
-2. Creating a server bot on Poe:
- a) Log in to your Poe account
- b) Click the "Create bot" button or navigate to `poe.com/create_bot`
- c) Select "Server bot"
- d) Enter a unique name for your bot
- e) Enter `https://yourdomain.com/poe-bot-server/` in the "Server URL" field
- f) Copy the access key to your clipboard
- g) Now that you have the server bot name and access key you will need to edit the `.env` file of your web app
- h) Click on the bot access button to test accessibility. If there's a problem then try restarting your web app
- i) Click the "Save" button
- j) Start a chat with the new server bot you created
+Part 2 - Creating a server bot on Poe:
+- Log in to your Poe account
+- Click the "Create bot" button or navigate to `poe.com/create_bot`
+- Select "Server bot"
+- Enter a unique name for your bot
+- Enter `https://yourdomain.com/poe-bot-server/` in the "Server URL" field
+- Copy the access key to your clipboard
+- Now that you have the server bot name and access key you will need to edit the `.env` file of your web app
+- Click on the bot access button to test accessibility. If there's a problem then try restarting your web app
+- Click the "Save" button
+- Start a chat with the new server bot you created
