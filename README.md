@@ -37,6 +37,6 @@ To set up your own server bot (or "bot server" as they're called in Poe's API do
 - Enter `https://yourdomain.com/poe-bot-server/` in the "Server URL" field
 - Copy the access key to your clipboard
 - Now that you have the server bot name and access key you will need to edit the `.env` file of your web app
-- Click on the bot access button to test accessibility. If there's a problem then try restarting your web app
-- Click the "Save" button
+- Click on the "Check reachability" button to test basic connectivity with your web app. If there's a problem then try restarting your web app
+- Click the "Create bot" button
 - Start a chat with the new server bot you created
