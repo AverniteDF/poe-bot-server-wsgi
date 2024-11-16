@@ -27,7 +27,7 @@ To set up your own server bot (or "bot server" as they're called in Poe's API do
 - Enter the command `pip install -r requirements.txt` to install the packages needed for the project
 - Stop and restart your Python web app to refresh it
 - Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the updated web app is running okay
-- Note: You will need to edit the `.env` file but you need to do Step #2 (below) first
+- Note: You will need to edit the `.env` file but you need to complete Part #2 (below) first
 
 ### Part 2 - Creating a server bot on Poe:
 - Log in to your Poe account
