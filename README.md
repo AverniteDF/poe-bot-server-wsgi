@@ -8,7 +8,7 @@ To set up your own server bot (or "bot server" as they are called in Poe's API d
 1. A means of hosting a Python web application (e.g., shared hosting account with cPanel)
 2. An account on Poe that allows you to create server bots (poe.com/create_bot).
 
-1. Setting up a Python web application:
+Step 1. Setting up a Python web application:
    - Log into cPanel and navigate to "Setup Python App"
    - Click "Create Application"
    - Select the latest version of Python
