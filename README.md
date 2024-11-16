@@ -6,7 +6,7 @@ This bot is available on Poe by the name of "Server-Bot-WSGI" (by @robhewitt).
 To set up your own server bot (or "bot server" as they are called in Poe's API documentation) you will need two things:
 
 1. A means of hosting a Python web application (e.g., shared hosting account with cPanel)
-2. An account on Poe that allows you to create server bots (poe.com/create_bot).
+2. An account on Poe that allows you to create server bots (poe.com/create_bot)
 
 ### Part 1 - Setting up a Python web application:
 - Log into cPanel and navigate to "Setup Python App"
