@@ -91,20 +91,22 @@ class Conversation:
         else:
             return filtered
 
-def respond_to_conversation_update(conversation):
-    """
-    Currently, this function acts as a kind of simple "echo bot".
-    It converts all user messages to uppercase and returns them separated by newlines.
-    """
-    # Get user messages and convert them to uppercase
-    user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
+    def sender(self):
+        """
+        Retrieves the role of the sender of the last message in the conversation.
 
-    # Join user messages with newline characters
-    return '\n'.join(user_messages_uppercase)
+        :return: A string representing the role ('user', 'bot', 'system', etc.)
+                 Returns 'unknown' if the conversation is empty or role is missing.
+        """
+        if not self.query_list:
+            return 'unknown'
 
-def generate_response(conversation):
+        last_message = self.query_list[-1]
+        return last_message.get('role', 'unknown')
+
+def create_streaming_echo_response_to_user(conversation):
     """
-    Generator function to stream SSEs to the client using the specified bot.
+    We are replying to user so generate a stream of SSEs to define the message (contribution to conversation) we are sending back.
     """
     try:
         # Send 'meta' event
@@ -116,10 +118,12 @@ def generate_response(conversation):
         logger.info("Bot: Sent 'meta' event.")
         time.sleep(0.1)  # Simulate processing delay
 
-        # Process the conversation using the bot's specific logic
-        bot_response = respond_to_conversation_update(conversation)
+        # Currently, this bot simply echoes back the user's messages in ALL CAPS
+        user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
+        contribution_to_conversation = '\n'.join(user_messages_uppercase)
+
         text_event = {
-            "text": bot_response
+            "text": contribution_to_conversation
         }
         yield send_event("text", text_event)
         logger.info("Bot: Sent 'text' event.")
@@ -144,8 +148,29 @@ def generate_response(conversation):
 def on_conversation_update(conversation):
     """
     A conversation update was received. The most recent message in the conversation will either be from the user or from a remote bot.
+    This (local) bot must either stream a response to the user or forward the conversation to a remote bot, then exit so that Passenger can process the next HTTP Request.
+    When forwarding the conversation we don't wait for a response. Each incoming HTTP POST of type 'query' must be handled separately and correctly by examining its fields (user-id, conversation-id, etc.).
+    Note that bot dependencies will need to be established in order for remote bots to accept requests. Alternatively, 'p-b' and 'p-lat' tokens could be used but this approach would be very restrictive.
     """
-    return Response(generate_response(conversation), mimetype='text/event-stream')
+    sender = conversation.sender()
+    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo'
+
+    if relay_to:
+        if sender == 'user': # Here we must forward the conversation to the remote bot and then exit. It may be necessary to keep pending 'jobs' on file for continuity
+            logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{relay_to}') has not been implemented yet.")
+            abort(501, description="Forwarding conversation updates to remote bots not implemented yet.")
+        elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user. Examine identifier fields to determine destination
+            logger.error(f"Received a conversation update from remote bot '{relay_to}'. Handling this event (forwarding it to the user) has not been implemented yet.")
+            abort(501, description="Receiving conversation updates from remote bots not implemented yet.")
+        else:
+            logger.error(f"Unexpected sender role: {sender}.")
+            abort(400, description="Unexpected sender role.")
+    else: # No third-party specified so we just echo back the user's messages
+        if sender == 'user':
+            return Response(create_streaming_echo_response_to_user(conversation), mimetype='text/event-stream')
+        else:
+            logger.error(f"Unexpected sender role: {sender}.")
+            abort(400, description="Unexpected sender role.")
 
 @app.before_request
 def log_request_info():
