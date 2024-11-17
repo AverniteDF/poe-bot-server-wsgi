@@ -18,7 +18,7 @@ To set up your own server bot (or "bot server" as they're called in Poe's API do
 1. Click "Create" button
 1. Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the default web app setup is running okay
 1. Navigate to "File Manager" in cPanel
-1. Open the "/poe-bot-server" folder
+1. Open the `/poe-bot-server` folder
 1. Replace the files you see there with the project files of this repo
 1. Go back the "Setup Python App" page and bring up the details of your newly created web app (you may need to click the "Edit" button)
 1. Near the top of the page you will see "To enter to virtual environment, run the command: {command}" - copy that command to the clipboard
