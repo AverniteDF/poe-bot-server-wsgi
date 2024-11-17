@@ -1,5 +1,17 @@
 # bot.py
 
+"""
+This is a partially-implemented bot server that interacts with the Poe platform.
+It is currently capable of echoing messages back to the Poe client/user.
+The ultimate goal, however, is for it to be able to forward user messages to other bots on Poe and then relay the responses back to the user.
+The challenge is for all of this to be done in a purely synchronous fashion (no async).
+This means that asynchronous libraries such as `fastapi` and `fastapi-poe` cannot be used.
+The good news is that, at a basic level, interacting with the Poe platform is done via HTTP POSTs containing JSON.
+It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
+If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
+These server bots won't handle heavy usage well but many of them don't need to anyway.
+"""
+
 import os
 import logging
 from dotenv import load_dotenv
