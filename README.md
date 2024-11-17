@@ -31,7 +31,7 @@ To set up your own server bot (or "bot server" as they're called in Poe's API do
 
 ### Part 2 - Creating a server bot (profile) on Poe:
 - Log in to your Poe account
-- Click the "Create bot" button or navigate to [poe.com/create_bot]
+- Click the "Create bot" button or navigate to [poe.com/create_bot](https://poe.com/create_bot)
 - Select "Server bot"
 - Enter a unique name for your bot
 - Enter `https://yourdomain.com/poe-bot-server/` in the "Server URL" field
