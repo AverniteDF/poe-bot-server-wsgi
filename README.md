@@ -1,7 +1,7 @@
 # poe-bot-server-wsgi
 This project aims to create a full-featured Poe server bot using a WSGI Python web application (purely synchronous implementation).
 
-This bot is available on Poe by the name of [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
+This bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
 
 To set up your own server bot (or "bot server" as they're called in Poe's API documentation) you will need two things:
 
