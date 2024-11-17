@@ -5,29 +5,29 @@ This bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSG
 
 To set up your own server bot (or "bot server" as they're called in Poe's API documentation) you will need two things:
 
-1. A means of hosting a Python web application (e.g., shared hosting account with cPanel)
+1. A means of creating a Python web application (e.g., shared hosting account with cPanel)
 2. An account on Poe that allows you to create server bots (`poe.com/create_bot`)
 
 ### Part 1 - Setting up a Python web application:
-- Log into cPanel and navigate to "Setup Python App"
-- Click "Create Application"
-- Select the latest version of Python
-- Enter "poe-bot-server" in "Application root" field
-- Enter "poe-bot-server" in "Application URL" field
-- Leave the "Application startup file" and "Application Entry point" fields BLANK
-- Click "Create" button
-- Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the default web app setup is running okay
-- Navigate to "File Manager" in cPanel
-- Open the "/poe-bot-server" folder
-- Replace the files you see there with the project files of this repo
-- Go back the "Setup Python App" page and bring up the details of your newly created web app (you may need to click the "Edit" button)
-- Near the top of the page you will see "To enter to virtual environment, run the command: {command}" - copy that command to the clipboard
-- SSH into your shared hosting account (by using PuTTY for example)
-- Paste that command into the terminal
-- Enter the command `pip install -r requirements.txt` to install the packages needed for the project
-- Stop and restart your Python web app to refresh it
-- Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the updated web app is running okay
-- Note: You will need to edit the `.env` file but you need to complete Part #2 (below) first
+1. Log into cPanel and navigate to "Setup Python App"
+1. Click "Create Application"
+1. Select the latest version of Python
+1. Enter "poe-bot-server" in "Application root" field
+1. Enter "poe-bot-server" in "Application URL" field
+1. Leave the "Application startup file" and "Application Entry point" fields BLANK
+1. Click "Create" button
+1. Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the default web app setup is running okay
+1. Navigate to "File Manager" in cPanel
+1. Open the "/poe-bot-server" folder
+1. Replace the files you see there with the project files of this repo
+1. Go back the "Setup Python App" page and bring up the details of your newly created web app (you may need to click the "Edit" button)
+1. Near the top of the page you will see "To enter to virtual environment, run the command: {command}" - copy that command to the clipboard
+1. SSH into your shared hosting account (by using PuTTY for example)
+1. Paste that command into the terminal
+1. Enter the command `pip install -r requirements.txt` to install the packages needed for the project
+1. Stop and restart your Python web app to refresh it
+1. Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the updated web app is running okay
+1. Note: You will need to edit the `.env` file but you need to complete Part #2 (below) first
 
 ### Part 2 - Creating a server bot (profile) on Poe:
 - Log in to your Poe account
