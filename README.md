@@ -1,42 +1,72 @@
 # poe-bot-server-wsgi
-This project aims to create a full-featured Poe server bot using a WSGI Python web application (purely synchronous implementation).
 
-This bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
+This project aims to build a fully functional server bot for the [Poe platform](https://poe.com/) using a WSGI Python web application. The bot is implemented in a purely synchronous manner, making it easy to set up on shared hosting environments (such as those with cPanel).
 
-To set up your own server bot (or "bot server" as they're called in Poe's API documentation) you will need two things:
+The bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
 
-1. A means of creating a Python web application (e.g., shared hosting account with cPanel)
-2. An account on Poe that allows you to create server bots (`poe.com/create_bot`)
+The ultimate goal of this project is to allow the bot to forward user messages to other bots on Poe and relay their responses back to the user. Currently, the bot echoes user messages in uppercase but will be extended with more functionality as the expected JSON payloads for bot-to-bot communication become clearer.
 
-### Part 1 - Setting up a Python web application:
-1. Log into cPanel and navigate to "Setup Python App"
-1. Click "Create Application"
-1. Select the latest version of Python
-1. Enter "poe-bot-server" in "Application root" field
-1. Enter "poe-bot-server" in "Application URL" field
-1. Leave the "Application startup file" and "Application Entry point" fields BLANK
-1. Click "Create" button
-1. Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the default web app setup is running okay
-1. Navigate to "File Manager" in cPanel
-1. Open the `/poe-bot-server` folder
-1. Replace the files you see there with the project files of this repo
-1. Go back the "Setup Python App" page and bring up the details of your newly created web app (you may need to click the "Edit" button)
-1. Near the top of the page you will see "To enter to virtual environment, run the command: {command}" - copy that command to the clipboard
-1. SSH into your shared hosting account (by using PuTTY for example)
-1. Paste that command into the terminal
-1. Enter the command `pip install -r requirements.txt` to install the packages needed for the project
-1. Stop and restart your Python web app to refresh it
-1. Enter `https://yourdomain.com/poe-bot-server/` into your browser address bar to see if the updated web app is running okay
-1. Note: You will need to edit the `.env` file but you need to complete Part #2 (below) first
+## Features
 
-### Part 2 - Creating a server bot (profile) on Poe:
-1. Log in to your Poe account
-1. Click the "Create bot" button or navigate to [poe.com/create_bot](https://poe.com/create_bot)
-1. Select "Server bot"
-1. Enter a unique name for your bot
-1. Enter `https://yourdomain.com/poe-bot-server/` in the "Server URL" field
-1. Copy the access key to your clipboard
-1. Now that you have the server bot name and access key you will need to edit the `.env` file of your web app
-1. Click on the "Check reachability" button to test basic connectivity with your web app. If there's a problem then try restarting your web app
-1. Click the "Create bot" button near bottom of page
-1. Start a chat with the new server bot you created
+- **Synchronous (no async)**: The bot is implemented using synchronous Python, making it compatible with standard WSGI-based web hosting environments.
+- **Flask-based**: Built using the Flask microframework to handle HTTP requests and responses.
+- **Logging**: Logs requests and responses for easier debugging and monitoring.
+- **Echo Bot**: Responds to user input by echoing it back in uppercase (for now).
+
+## Setup Instructions
+
+### Part 1: Setting up a Python Web Application
+
+To host this project, you'll need a Python web application setup, which is often available on shared hosting platforms like cPanel.
+
+1. Log into your hosting provider's control panel (e.g., cPanel) and navigate to "Setup Python App".
+2. Click "Create Application".
+3. Select the latest version of Python (3.x).
+4. Set the **Application root** to `poe-bot-server`.
+5. Set the **Application URL** to `poe-bot-server`.
+6. Leave the **Application startup file** and **Application Entry point** fields blank for now.
+7. Click "Create" to initialize the app.
+8. Open your browser and visit `https://yourdomain.com/poe-bot-server/` to confirm that the default web app setup is running.
+9. Use the File Manager in cPanel to navigate to the `/poe-bot-server` directory.
+10. Replace the existing files in this directory with the project files from this repository.
+11. Return to "Setup Python App" and click "Edit" to view your app's details.
+12. Copy the command provided to enter the virtual environment and run it via SSH (e.g., using PuTTY).
+13. Within the SSH session, run `pip install -r requirements.txt` to install the necessary dependencies.
+14. Restart your Python web app to apply the changes.
+15. Revisit `https://yourdomain.com/poe-bot-server/` to check if the updated app is running.
+16. **Note**: Before your bot can function, you'll need to configure the `.env` file. This requires completing Part 2.
+
+### Part 2: Creating a Server Bot on Poe
+
+To link your web app to Poe, you need to create a server bot profile.
+
+1. Log into your Poe account.
+2. Click "Create bot" or navigate to [poe.com/create_bot](https://poe.com/create_bot).
+3. Select "Server bot".
+4. Choose a unique name for your bot.
+5. Enter your server's URL (e.g., `https://yourdomain.com/poe-bot-server/`) under **Server URL**.
+6. Copy the access key provided by Poe.
+7. Update the `.env` file in your web app directory with the bot name and access key.
+8. Click "Check reachability" to test the connection between Poe and your web app. If there are issues, try restarting the app.
+9. Once the connection is successful, click "Create bot".
+10. Start a chat with your new server bot on Poe to see it in action!
+
+## Contributing
+
+Are you familiar with the Poe platform's API or have insight into the JSON payloads used for bot-to-bot communication? Contributions are welcome!
+
+This project is in active development and one key challenge is understanding the specifics of how bots on Poe interact with each other. If you have information or code related to this, particularly regarding the format of JSON payloads for requests and responses, your help would be greatly appreciated!
+
+Here's how you can contribute:
+
+1. Fork the repository.
+2. Create a new branch (`git checkout -b feature/new-feature`).
+3. Commit your changes (`git commit -m 'Add some feature'`).
+4. Push to the branch (`git push origin feature/new-feature`).
+5. Open a pull request.
+
+Please feel free to open issues or reach out if you have any questions or ideas!
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
