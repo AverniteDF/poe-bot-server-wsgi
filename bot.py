@@ -116,7 +116,12 @@ class Conversation:
         last_message = self.query_list[-1]
         return last_message.get('role', 'unknown')
 
-def create_streaming_echo_response_to_user(conversation):
+def compose_echo_reply(conversation):
+    # Echo back the user's messages in ALL CAPS
+    user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
+    return '\n'.join(user_messages_uppercase)
+
+def generate_streaming_response_to_user(text):
     """
     We are replying to user so generate a stream of SSEs to define the message (contribution to conversation) we are sending back.
     """
@@ -130,12 +135,8 @@ def create_streaming_echo_response_to_user(conversation):
         logger.info("Bot: Sent 'meta' event.")
         time.sleep(0.1)  # Simulate processing delay
 
-        # Currently, this bot simply echoes back the user's messages in ALL CAPS
-        user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
-        contribution_to_conversation = '\n'.join(user_messages_uppercase)
-
         text_event = {
-            "text": contribution_to_conversation
+            "text": text
         }
         yield send_event("text", text_event)
         logger.info("Bot: Sent 'text' event.")
@@ -179,7 +180,7 @@ def on_conversation_update(conversation):
             abort(400, description="Unexpected sender role.")
     else: # No third-party specified so we just echo back the user's messages
         if sender == 'user':
-            return Response(create_streaming_echo_response_to_user(conversation), mimetype='text/event-stream')
+            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation)), mimetype='text/event-stream')
         else:
             logger.error(f"Unexpected sender role: {sender}.")
             abort(400, description="Unexpected sender role.")
@@ -266,7 +267,7 @@ def handle_http_request():
             response = {
                 "status": "Settings received", # Valid?
                 "bot_name": BOT_NAME, # Valid?
-                "server_bot_dependencies" : {}, # If relaying is implemented then this field must be set to {"GPT-3.5-Turbo": 1} to declare that this bot will use a single call to GPT-3.5-Turbo.
+                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # If relaying is implemented then this field must be set to {"GPT-3.5-Turbo": 1} to declare that this bot will use a single call to GPT-3.5-Turbo.
                 "introduction_message" : "Hello! Be advised that this bot is under development."
             }
             logger.info(f"Responding to settings request: {response}")
