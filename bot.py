@@ -6,10 +6,10 @@ It is currently capable of echoing messages back to the Poe client/user.
 The ultimate goal, however, is for it to be able to forward user messages to other bots on Poe and then relay the responses back to the user.
 The challenge is for all of this to be done in a purely synchronous fashion (no async).
 This means that asynchronous libraries such as `fastapi` and `fastapi-poe` cannot be used.
-The good news is that, at a basic level, interacting with the Poe platform is done via HTTP POSTs containing JSON.
+The good news is that, at a basic level, interacting with the Poe platform is done via HTTP requests and responses containing JSON.
 It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
 If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
-These server bots won't handle heavy usage well but many of them don't need to anyway.
+These server bots won't handle heavy usage well but should work fine for personal use and experimentation.
 """
 
 import os
@@ -160,18 +160,18 @@ def create_streaming_echo_response_to_user(conversation):
 def on_conversation_update(conversation):
     """
     A conversation update was received. The most recent message in the conversation will either be from the user or from a remote bot.
-    This (local) bot must either stream a response to the user or forward the conversation to a remote bot, then exit so that Passenger can process the next HTTP Request.
-    When forwarding the conversation we don't wait for a response. Each incoming HTTP POST of type 'query' must be handled separately and correctly by examining its fields (user-id, conversation-id, etc.).
-    Note that bot dependencies will need to be established in order for remote bots to accept requests. Alternatively, 'p-b' and 'p-lat' tokens could be used but this approach would be very restrictive.
+    This (local) bot must either stream a response to the user or forward the conversation to a remote bot and wait for a response.
+    If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (rule imposed by Poe).
+    Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate. Alternatively, 'p-b' and 'p-lat' tokens could be used but this approach would be very restrictive.
     """
     sender = conversation.sender()
-    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo'
+    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo' (Question: Do remote bots stream their responses?)
 
     if relay_to:
-        if sender == 'user': # Here we must forward the conversation to the remote bot and then exit. It may be necessary to keep pending 'jobs' on file for continuity
+        if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will formulate a reply based on the response and relay it to the user.
             logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{relay_to}') has not been implemented yet.")
             abort(501, description="Forwarding conversation updates to remote bots not implemented yet.")
-        elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user. Examine identifier fields to determine destination
+        elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user.
             logger.error(f"Received a conversation update from remote bot '{relay_to}'. Handling this event (forwarding it to the user) has not been implemented yet.")
             abort(501, description="Receiving conversation updates from remote bots not implemented yet.")
         else:
@@ -264,8 +264,10 @@ def handle_http_request():
 
             # Customize the response as needed by Poe's API
             response = {
-                "status": "Settings received",
-                "bot_name": BOT_NAME
+                "status": "Settings received", # Valid?
+                "bot_name": BOT_NAME, # Valid?
+                "server_bot_dependencies" : {}, # If relaying is implemented then this field must be set to {"GPT-3.5-Turbo": 1} to declare that this bot will use a single call to GPT-3.5-Turbo.
+                "introduction_message" : "Hello! Be advised that this bot is under development."
             }
             logger.info(f"Responding to settings request: {response}")
             return jsonify(response), 200
