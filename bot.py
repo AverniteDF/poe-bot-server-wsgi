@@ -1,6 +1,8 @@
 # bot.py
 
 """
+WSGI (Synchronous) Bot Server for Poe Platform
+----------------------------------------------
 This is a partially-implemented bot server that interacts with the Poe platform.
 It is currently capable of echoing messages back to the Poe client/user.
 The ultimate goal, however, is for it to be able to forward user messages to other bots on Poe and then relay the responses back to the user.
@@ -9,7 +11,8 @@ This means that asynchronous libraries such as `fastapi` and `fastapi_poe` canno
 The good news is that, at a basic level, interacting with the Poe platform is done via HTTP requests and responses containing JSON.
 It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
 If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
-These server bots won't handle heavy usage well but should work fine for personal use and experimentation.
+These server bots won't handle heavy usage well but should work fine for personal use, experimentation, and light traffic scenarios.
+Contributors are welcome to help advance this bot, particularly if they have insights into the Poe API's JSON payloads for bot-to-bot communication.
 """
 
 import os
@@ -163,13 +166,13 @@ def on_conversation_update(conversation):
     A conversation update was received. The most recent message in the conversation will either be from the user or from a remote bot.
     This (local) bot must either stream a response to the user or forward the conversation to a remote bot and wait for a response.
     If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (rule imposed by Poe).
-    Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate. Alternatively, 'p-b' and 'p-lat' tokens could be used but this approach would be very restrictive.
+    Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
     sender = conversation.sender()
     relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo' (Question: Do remote bots stream their responses?)
 
     if relay_to:
-        if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will formulate a reply based on the response and relay it to the user.
+        if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will compose a reply based on the response and relay it to the user.
             logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{relay_to}') has not been implemented yet.")
             abort(501, description="Forwarding conversation updates to remote bots not implemented yet.")
         elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user.
@@ -265,9 +268,7 @@ def handle_http_request():
 
             # Customize the response as needed by Poe's API. Important: Whenever these settings are changed you must manually prompt Poe's server to make a settings request by running the command `curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>`
             response = {
-                "status": "Settings received", # Valid?
-                "bot_name": BOT_NAME, # Valid?
-                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # If relaying is implemented then this field must be set to {"GPT-3.5-Turbo": 1} to declare that this bot will use a single call to GPT-3.5-Turbo.
+                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # Pre-authorize 1 call to 'GPT-4o-Mini'
                 "introduction_message" : "Hello! Be advised that this bot is under development."
             }
             logger.info(f"Responding to settings request: {response}")
