@@ -2,7 +2,7 @@
 
 This project aims to build a fully functional server bot for the [Poe platform](https://poe.com/) using a WSGI Python web application. The bot is implemented in a purely synchronous manner, making it easy to set up on shared hosting environments (such as those with cPanel).
 
-The bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
+A functioning instance of this bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
 
 The ultimate goal of this project is to allow the bot to forward user messages to other bots on Poe and relay their responses back to the user. Currently, the bot echoes user messages in uppercase but will be extended with more functionality as the expected JSON payloads for bot-to-bot communication become clearer.
 
