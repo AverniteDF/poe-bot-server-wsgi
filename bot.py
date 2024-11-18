@@ -21,6 +21,7 @@ from dotenv import load_dotenv
 from flask import Flask, request, abort, Response, jsonify
 import json
 import time
+import random
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -119,10 +120,24 @@ class Conversation:
         last_message = self.query_list[-1]
         return last_message.get('role', 'unknown')
 
+def append_random_message(text):
+    # Append a random line from the messages.txt file
+    try:
+        with open('messages.txt', 'r') as file:
+            lines = file.readlines()
+            if lines:
+                random_line = random.choice(lines).strip()
+            else:
+                random_line = "No additional messages available."
+    except FileNotFoundError:
+        random_line = "Error: messages.txt file not found."
+
+    return f"{text}\n\n---\n\n{random_line}"
+
 def compose_echo_reply(conversation):
     # Echo back the user's messages in ALL CAPS
     user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
-    return '\n'.join(user_messages_uppercase)
+    return append_random_message('\n'.join(user_messages_uppercase))
 
 def generate_streaming_response_to_user(text):
     """
