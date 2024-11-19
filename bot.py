@@ -120,24 +120,22 @@ class Conversation:
         last_message = self.query_list[-1]
         return last_message.get('role', 'unknown')
 
-def append_random_message(text):
-    # Append a random line from the messages.txt file
+def get_random_message():
+    # Return a random line from the 'messages.txt' file
     try:
         with open('messages.txt', 'r') as file:
             lines = file.readlines()
             if lines:
-                random_line = random.choice(lines).strip()
+                return random.choice(lines).strip()
             else:
-                random_line = "No additional messages available."
+                return "No additional messages available."
     except FileNotFoundError:
-        random_line = "Error: messages.txt file not found."
-
-    return f"{text}\n\n---\n\n{random_line}"
+        return "Error: messages.txt file not found."
 
 def compose_echo_reply(conversation):
     # Echo back the user's messages in ALL CAPS
     user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
-    return append_random_message('\n'.join(user_messages_uppercase))
+    return '\n'.join(user_messages_uppercase)
 
 def generate_streaming_response_to_user(text):
     """
@@ -184,7 +182,7 @@ def on_conversation_update(conversation):
     Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
     sender = conversation.sender()
-    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo' (Question: Do remote bots stream their responses?)
+    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo' (Question: Will the remote bot stream its response to this bot or send it all at once?)
 
     if relay_to:
         if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will compose a reply based on the response and relay it to the user.
@@ -198,7 +196,7 @@ def on_conversation_update(conversation):
             abort(400, description="Unexpected sender role.")
     else: # No third-party specified so we just echo back the user's messages
         if sender == 'user':
-            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation)), mimetype='text/event-stream')
+            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation) + '\n\n---\n\n' + get_random_message()), mimetype='text/event-stream')
         else:
             logger.error(f"Unexpected sender role: {sender}.")
             abort(400, description="Unexpected sender role.")
@@ -281,9 +279,10 @@ def handle_http_request():
         if request_type == 'settings':
             logger.info("Received 'settings' type request.")
 
-            # Customize the response as needed by Poe's API. Important: Whenever these settings are changed you must manually prompt Poe's server to make a settings request by running the command `curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>`
+            # Whenever these settings are changed you must manually prompt Poe's server to make a settings request by running the command:
+            # curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
             response = {
-                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # Pre-authorize 1 call to 'GPT-4o-Mini'
+                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # Pre-authorize 1 call to GPT-4o-Mini
                 "introduction_message" : "Hello! Be advised that this bot is under development."
             }
             logger.info(f"Responding to settings request: {response}")
