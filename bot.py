@@ -64,12 +64,17 @@ if logger.hasHandlers():
 logger.addHandler(stdout_handler)
 logger.addHandler(stderr_handler)
 
+# Bot Settings
+# Whenever these are changed you must manually prompt Poe's server to make a settings request by running the command: curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
+INTRO_MESSAGE = 'Hello! Be advised that this bot is under development.'
+THIRD_PARTY_BOT = 'GPT-4o-Mini' # Declare which remote bot we will be relaying messages to and from (Question: Will the remote bot stream its response to this bot or send it all at once?)
+
 def mask_access_key(key):
     """
     Masks the ACCESS_KEY by showing the first two and last two characters,
     replacing the intermediate characters with asterisks.
     """
-    if not key or len(key) < 4:
+    if not key or len(key) < 16:
         # If the key is too short or empty, mask the entire key
         return '*' * len(key)
     return f"{key[:2]}{'*' * (len(key) - 4)}{key[-2:]}"
@@ -182,14 +187,13 @@ def on_conversation_update(conversation):
     Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
     sender = conversation.sender()
-    relay_to = None # This could be a remote bot such as 'GPT-3.5-Turbo' (Question: Will the remote bot stream its response to this bot or send it all at once?)
 
-    if relay_to:
+    if THIRD_PARTY_BOT and False: # Currently disabled
         if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will compose a reply based on the response and relay it to the user.
-            logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{relay_to}') has not been implemented yet.")
+            logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{THIRD_PARTY_BOT}') has not been implemented yet.")
             abort(501, description="Forwarding conversation updates to remote bots not implemented yet.")
         elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user.
-            logger.error(f"Received a conversation update from remote bot '{relay_to}'. Handling this event (forwarding it to the user) has not been implemented yet.")
+            logger.error(f"Received a conversation update from remote bot '{THIRD_PARTY_BOT}'. Handling this event (forwarding it to the user) has not been implemented yet.")
             abort(501, description="Receiving conversation updates from remote bots not implemented yet.")
         else:
             logger.error(f"Unexpected sender role: {sender}.")
@@ -279,11 +283,9 @@ def handle_http_request():
         if request_type == 'settings':
             logger.info("Received 'settings' type request.")
 
-            # Whenever these settings are changed you must manually prompt Poe's server to make a settings request by running the command:
-            # curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
             response = {
-                "server_bot_dependencies" : {"GPT-4o-Mini": 1}, # Pre-authorize 1 call to GPT-4o-Mini
-                "introduction_message" : "Hello! Be advised that this bot is under development."
+                "server_bot_dependencies" : {THIRD_PARTY_BOT: 1}, # Declare third-party bots (here we pre-authorize 1 call to the THIRD_PARTY_BOT)
+                "introduction_message" : INTRO_MESSAGE
             }
             logger.info(f"Responding to settings request: {response}")
             return jsonify(response), 200
