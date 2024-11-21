@@ -12,6 +12,9 @@ The good news is that, at a basic level, interacting with the Poe platform is do
 It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
 If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
 These server bots won't handle heavy usage well but should work fine for personal use, experimentation, and light traffic scenarios.
+
+A functioning instance of this bot is available on Poe as 'Server-Bot-WSGI' (by @robhewitt).
+The source for this project can be downloaded from GitHub (https://github.com/AverniteDF/poe-bot-server-wsgi).
 Contributors are welcome to help advance this bot, particularly if they have insights into the Poe API's JSON payloads for bot-to-bot communication.
 """
 
