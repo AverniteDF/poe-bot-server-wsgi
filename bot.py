@@ -160,7 +160,7 @@ def forward_to_third_party_bot(conversation):
         logger.info(f"Forwarding conversation to third-party bot '{THIRD_PARTY_BOT}' at {third_party_bot_url}.")
         response = requests.post(third_party_bot_url, json=payload, headers=headers, timeout=10)
 
-        # Check if the response was successful (Currently, all we are getting is "Response ended prematurely")
+        # Check if the response was successful (Currently, a RequestException is being thrown: "Response ended prematurely")
         if response.status_code == 200:
             logger.info(f"Received response from third-party bot '{THIRD_PARTY_BOT}'.")
             return response.json()
