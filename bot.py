@@ -227,15 +227,16 @@ def generate_streaming_response_to_user(text):
 
 def on_conversation_update(conversation):
     """
-    A conversation update was received. The most recent message in the conversation is expected to be from the 'user'.
+    A conversation update was received. The most recent message in the conversation is expected to be from 'user'.
     This (local) bot must either stream a response to the user or forward the conversation to a remote bot and wait for a response.
     If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (a rule imposed by Poe).
     Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
     sender = conversation.sender()
 
-    if THIRD_PARTY_BOT and False: # Currently disabled
-        if sender == 'user': # User message received; forward to third-party bot
+    if sender == 'user':
+        attempt_relay = False # For testing purposes we can enable or disable
+        if THIRD_PARTY_BOT and attempt_relay:
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
             # Relay the conversation to the third-party bot
@@ -257,15 +258,11 @@ def on_conversation_update(conversation):
                     status=200,
                     mimetype='text/event-stream'
                 )
-        else:
-            logger.error(f"Unexpected sender role: {sender}.")
-            abort(400, description="Unexpected sender role.")
-    else: # No third-party bot specified or relaying disabled; echo back the user's message
-        if sender == 'user':
+        else: # No third-party bot specified or relaying disabled; echo back the user's message
             return Response(generate_streaming_response_to_user(compose_echo_reply(conversation) + '\n\n---\n\n' + get_random_message()), mimetype='text/event-stream')
-        else:
-            logger.error(f"Unexpected sender role: {sender}.")
-            abort(400, description="Unexpected sender role.")
+    else:
+        logger.error(f"Unexpected sender role: {sender}.")
+        abort(400, description="Unexpected sender role.")
 
 @app.before_request
 def log_request_info():
