@@ -22,6 +22,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask, request, abort, Response, jsonify
+import requests # (Questions: Is `requests` sufficient or should we use `httpx` instead? | Should we use HTTP/1.1 or HTTP/2 to communicate with Poe?)
 import json
 import time
 import random
@@ -128,6 +129,48 @@ class Conversation:
         last_message = self.query_list[-1]
         return last_message.get('role', 'unknown')
 
+def forward_to_third_party_bot(conversation):
+    """
+    Forwards the conversation to the third-party bot and returns its response.
+
+    :param conversation: The Conversation object containing previous messages.
+    :return: A response object from the third-party bot.
+    """
+    try:
+        # Define the third-party bot's URL (Question: Is the URL below correct? Can someone confirm?)
+        third_party_bot_url = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
+
+        # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete?)
+        payload = {
+            "version": "1.1",
+            "type": "query",
+            "query": conversation.query_list,  # Forward the entire query list
+            "language_code": "en"  # Optional: Adjust based on your use case
+        }
+
+        # Set the headers, including the Authorization header for the third-party bot
+        # Question: Do we need to specify whether the response should be streamed or not by adding an "Accept" header? (i.e., "Accept": "text/event-stream" OR "Accept": "application/json")
+        # It only makes sense to get a streaming responses if we relay that stream back to the Poe client as we receive it. Getting it all at once will be simpler as long as there aren't any timeout issues. Reminder: The Poe client requires an initial response within 5 seconds
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {ACCESS_KEY}" # Use the same ACCESS_KEY
+        }
+
+        # Make the POST request (NOTE: If response is being streamed we will need to add code to handle that)
+        logger.info(f"Forwarding conversation to third-party bot '{THIRD_PARTY_BOT}' at {third_party_bot_url}.")
+        response = requests.post(third_party_bot_url, json=payload, headers=headers, timeout=10)
+
+        # Check if the response was successful (Currently, all we are getting is "Response ended prematurely")
+        if response.status_code == 200:
+            logger.info(f"Received response from third-party bot '{THIRD_PARTY_BOT}'.")
+            return response.json()
+        else:
+            logger.error(f"Error from third-party bot '{THIRD_PARTY_BOT}': {response.status_code}, {response.text}")
+            return None
+    except Exception as e:
+        logger.error(f"Exception while communicating with third-party bot '{THIRD_PARTY_BOT}': {e}")
+        return None
+
 def get_random_message():
     # Return a random line from the 'messages.txt' file
     try:
@@ -184,24 +227,40 @@ def generate_streaming_response_to_user(text):
 
 def on_conversation_update(conversation):
     """
-    A conversation update was received. The most recent message in the conversation will either be from the user or from a remote bot.
+    A conversation update was received. The most recent message in the conversation is expected to be from the 'user'.
     This (local) bot must either stream a response to the user or forward the conversation to a remote bot and wait for a response.
-    If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (rule imposed by Poe).
+    If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (a rule imposed by Poe).
     Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
     sender = conversation.sender()
 
     if THIRD_PARTY_BOT and False: # Currently disabled
-        if sender == 'user': # Here we must forward the conversation to the remote bot via HTTP POST and wait for a response. We will compose a reply based on the response and relay it to the user.
-            logger.error(f"Received a conversation update from the user. Handling this event (forwarding it to '{THIRD_PARTY_BOT}') has not been implemented yet.")
-            abort(501, description="Forwarding conversation updates to remote bots not implemented yet.")
-        elif sender == 'bot': # Received a conversation update from the remote bot. We must stream it back to the user.
-            logger.error(f"Received a conversation update from remote bot '{THIRD_PARTY_BOT}'. Handling this event (forwarding it to the user) has not been implemented yet.")
-            abort(501, description="Receiving conversation updates from remote bots not implemented yet.")
+        if sender == 'user': # User message received; forward to third-party bot
+            logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
+
+            # Relay the conversation to the third-party bot
+            third_party_response = forward_to_third_party_bot(conversation)
+
+            if third_party_response:
+                # Extract the text content from the third-party bot's response
+                reply_text = third_party_response.get("content", "No response from third-party bot.")
+                return Response(generate_streaming_response_to_user(reply_text), mimetype='text/event-stream')
+            else:
+                # If the third-party bot fails, send an error event
+                error_event = {
+                    "allow_retry": False,
+                    "text": "Failed to retrieve a response from the third-party bot.",
+                    "error_type": "third_party_error"
+                }
+                return Response(
+                    send_event("error", error_event) + send_event("done", {}),
+                    status=200,
+                    mimetype='text/event-stream'
+                )
         else:
             logger.error(f"Unexpected sender role: {sender}.")
             abort(400, description="Unexpected sender role.")
-    else: # No third-party specified so we just echo back the user's messages
+    else: # No third-party bot specified or relaying disabled; echo back the user's message
         if sender == 'user':
             return Response(generate_streaming_response_to_user(compose_echo_reply(conversation) + '\n\n---\n\n' + get_random_message()), mimetype='text/event-stream')
         else:
