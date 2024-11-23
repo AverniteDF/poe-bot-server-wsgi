@@ -157,6 +157,8 @@ def forward_to_third_party_bot(conversation):
         }
 
         # Make the POST request (NOTE: If response is being streamed we will need to add code to handle that)
+        # Does the `requests.post` function below add headers of its own before sending the POST request?
+        # We need to log the final contents (headers and body) of the outgoing POST request. Is it possible?
         logger.info(f"Forwarding conversation to third-party bot '{THIRD_PARTY_BOT}' at {third_party_bot_url}.")
         response = requests.post(third_party_bot_url, json=payload, headers=headers, timeout=10)
 
