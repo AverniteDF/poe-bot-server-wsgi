@@ -5,13 +5,13 @@ WSGI (Synchronous) Bot Server for Poe Platform
 ----------------------------------------------
 This is a partially-implemented bot server that interacts with the Poe platform.
 It is currently capable of echoing messages back to the Poe client/user.
-The ultimate goal, however, is for it to be able to forward user messages to other bots on Poe and then relay the responses back to the user.
+The ultimate goal is for it to be able to forward user messages to other bots on Poe and relay their responses back to the user.
 The challenge is for all of this to be done in a purely synchronous fashion (no async).
 This means that asynchronous libraries such as `fastapi` and `fastapi_poe` cannot be used.
-The good news is that, at a basic level, interacting with the Poe platform is done via HTTP requests and responses containing JSON.
+At a basic level, interacting with the Poe platform is done via HTTP requests and responses containing JSON.
 It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
 If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
-These server bots won't handle heavy usage well but should work fine for personal use, experimentation, and light traffic scenarios.
+These server bots might not handle heavy usage well but should work fine for personal use, experimentation, and light traffic scenarios.
 
 A functioning instance of this bot is available on Poe as 'Server-Bot-WSGI' (by @robhewitt).
 The source for this project can be downloaded from GitHub (https://github.com/AverniteDF/poe-bot-server-wsgi).
@@ -22,7 +22,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask, request, abort, Response, jsonify
-import requests # (Questions: Is `requests` sufficient or should we use `httpx` instead? | Should we use HTTP/1.1 or HTTP/2 to communicate with Poe?)
+import requests  # (Questions: Is `requests` sufficient or should we use `httpx` instead? | Should we use HTTP/1.1 or HTTP/2 to communicate with Poe?)
 import json
 import time
 import random
@@ -71,7 +71,10 @@ logger.addHandler(stderr_handler)
 # Bot Settings
 # Whenever these are changed you must manually prompt Poe's server to make a settings request by running the command: curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
 INTRO_MESSAGE = 'Hello! Be advised that this bot is under development.'
-THIRD_PARTY_BOT = 'GPT-4o-Mini' # Declare which remote bot we will be relaying messages to and from (Question: Will the remote bot stream its response to this bot or send it all at once?)
+THIRD_PARTY_BOT = 'GPT-4o-Mini'  # Declare which remote bot we will be relaying messages to and from (Question: Will the remote bot stream its response to this bot or send it all at once?)
+
+# Define the third-party bot's API endpoint (Question: Is the URL below correct? Can someone confirm?)
+THIRD_PARTY_BOT_API_ENDPOINT = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
 
 def mask_access_key(key):
     """
@@ -133,12 +136,21 @@ def forward_to_third_party_bot(conversation):
     """
     Forwards the conversation to the third-party bot and returns its response.
 
+    Note: This function is currently not working. For one thing it needs code added to correctly handle streamed responses from the remote bot and forward them to the Poe client as they are received.
+
     :param conversation: The Conversation object containing previous messages.
     :return: A response object from the third-party bot.
     """
     try:
-        # Define the third-party bot's URL (Question: Is the URL below correct? Can someone confirm?)
-        third_party_bot_url = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
+        # Set the headers (Question: Is this headers structure correct and complete?)
+        headers = {
+            "Accept": "text/event-stream",
+            "Accept-Encoding": "gzip, deflate, br",
+            "Authorization": f"Bearer {ACCESS_KEY}",
+            "Connection": "keep-alive",
+            "Content-Type": "application/json",
+            "Host": "poe.com"
+        }
 
         # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete?)
         payload = {
@@ -148,19 +160,24 @@ def forward_to_third_party_bot(conversation):
             "language_code": "en"  # Optional: Adjust based on your use case
         }
 
-        # Set the headers, including the Authorization header for the third-party bot
-        # Question: Do we need to specify whether the response should be streamed or not by adding an "Accept" header? (i.e., "Accept": "text/event-stream" OR "Accept": "application/json")
-        # It only makes sense to get a streaming responses if we relay that stream back to the Poe client as we receive it. Getting it all at once will be simpler as long as there aren't any timeout issues. Reminder: The Poe client requires an initial response within 5 seconds
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {ACCESS_KEY}" # Use the same ACCESS_KEY
-        }
+        # Prepare the request using a `Request` object
+        request = requests.Request(
+            method='POST',
+            url=THIRD_PARTY_BOT_API_ENDPOINT,
+            headers=headers,
+            json=payload
+        )
+        prepared_request = request.prepare()  # Prepare the request to inspect it
 
-        # Make the POST request (NOTE: If response is being streamed we will need to add code to handle that)
-        # Does the `requests.post` function below add headers of its own before sending the POST request?
-        # We need to log the final contents (headers and body) of the outgoing POST request. Is it possible?
-        logger.info(f"Forwarding conversation to third-party bot '{THIRD_PARTY_BOT}' at {third_party_bot_url}.")
-        response = requests.post(third_party_bot_url, json=payload, headers=headers, timeout=10)
+        # Log the final request details
+        logger.info(f"Outgoing POST request to {prepared_request.url}")
+        logger.info(f"Request headers: {prepared_request.headers}")
+        logger.info(f"Request body: {prepared_request.body}")
+
+        # Send the prepared request using a `Session`
+        # We need to relay the response stream back to the Poe client as we receive it. Reminder: The Poe client requires an initial response within 5 seconds
+        with requests.Session() as session:
+            response = session.send(prepared_request, timeout=10)
 
         # Check if the response was successful (Currently, a RequestException is being thrown: "Response ended prematurely")
         if response.status_code == 200:
@@ -186,30 +203,50 @@ def get_random_message():
         return "Error: messages.txt file not found."
 
 def compose_echo_reply(conversation):
-    # Echo back the user's messages in ALL CAPS
-    user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
-    return '\n'.join(user_messages_uppercase)
-
-def generate_streaming_response_to_user(text):
     """
-    We are replying to user so generate a stream of SSEs to define the message (contribution to conversation) we are sending back.
+    Generator that yields the user's messages in ALL CAPS, one chunk at a time.
+    """
+    user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
+    combined_message = '\n'.join(user_messages_uppercase)
+
+    # We'll also tack on a random message to make the reply longer
+    combined_message = combined_message + '\n\n---\n\n' + get_random_message()
+    
+    chunk_size = 10  # Max number of characters to send at a time
+    for i in range(0, len(combined_message), chunk_size):
+        yield combined_message[i:i+chunk_size]
+        time.sleep(0.1)  # Slight delay to simulate streaming
+
+def generate_streaming_response_to_user(text_generator):
+    """
+    Streams a response to the user by yielding SSEs for each part generated by the text_generator.
+
+    Streaming currently doesn't work as expected because Passenger has a response buffering mechanism.
+    It can be effectively disabled by changing Passenger's configuration:
+    `passenger_response_buffer_high_watermark = 64`  # Set buffer capacity to a tiny size (64 bytes)
+    However, I'm not sure if altering these settings is practical in a shared hosting environment.
+    What's needed is a way to disable buffering for a specific response without changing the global setting.
+
+    :param text_generator: A generator function that yields parts of the text to send.
     """
     try:
         # Send 'meta' event
         meta = {
             "content_type": "text/markdown",
+            "linkify": True,
             "suggested_replies": False
         }
         yield send_event("meta", meta)
         logger.info("Bot: Sent 'meta' event.")
         time.sleep(0.1)  # Simulate processing delay
 
-        text_event = {
-            "text": text
-        }
-        yield send_event("text", text_event)
-        logger.info("Bot: Sent 'text' event.")
-        time.sleep(0.1)  # Simulate processing delay
+        # Stream the text piece by piece
+        for text_part in text_generator:
+            text_event = {
+                "text": text_part
+            }
+            yield send_event("text", text_event)
+            logger.info(f"Bot: Sent 'text' event: {text_part.replace("\n", "\\n")}")
 
         # Send 'done' event to indicate the end of the response
         done_event = {}
@@ -237,7 +274,7 @@ def on_conversation_update(conversation):
     sender = conversation.sender()
 
     if sender == 'user':
-        attempt_relay = False # For testing purposes we can enable or disable
+        attempt_relay = False  # For testing purposes we can enable or disable
         if THIRD_PARTY_BOT and attempt_relay:
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
@@ -260,8 +297,9 @@ def on_conversation_update(conversation):
                     status=200,
                     mimetype='text/event-stream'
                 )
-        else: # No third-party bot specified or relaying disabled; echo back the user's message
-            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation) + '\n\n---\n\n' + get_random_message()), mimetype='text/event-stream')
+        else:  # No third-party bot specified or relaying disabled; stream back an echo reply
+            headers = { "X-Accel-Buffering": "no" }  # Feeble attempt to disable response buffering (doesn't work)
+            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation)), mimetype='text/event-stream', headers=headers)
     else:
         logger.error(f"Unexpected sender role: {sender}.")
         abort(400, description="Unexpected sender role.")
@@ -345,7 +383,7 @@ def handle_http_request():
             logger.info("Received 'settings' type request.")
 
             response = {
-                "server_bot_dependencies" : {THIRD_PARTY_BOT: 1}, # Declare third-party bots (here we pre-authorize 1 call to the THIRD_PARTY_BOT)
+                "server_bot_dependencies" : {THIRD_PARTY_BOT: 1},  # Declare third-party bots (here we pre-authorize 1 call to the THIRD_PARTY_BOT)
                 "introduction_message" : INTRO_MESSAGE
             }
             logger.info(f"Responding to settings request: {response}")
