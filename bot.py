@@ -149,7 +149,7 @@ def forward_to_third_party_bot(conversation):
             "Authorization": f"Bearer {ACCESS_KEY}",
             "Connection": "keep-alive",
             "Content-Type": "application/json",
-            "Host": "poe.com"
+            "Host": "api.poe.com"
         }
 
         # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete?)
