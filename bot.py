@@ -22,7 +22,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from flask import Flask, request, abort, Response, jsonify
-import requests  # (Questions: Is `requests` sufficient or should we use `httpx` instead? | Should we use HTTP/1.1 or HTTP/2 to communicate with Poe?)
+import httpx
 import json
 import time
 import random
@@ -134,12 +134,13 @@ class Conversation:
 
 def forward_to_third_party_bot(conversation):
     """
-    Forwards the conversation to the third-party bot and returns its response.
+    Forwards the conversation to the third-party bot and streams its response back to the Poe client.
 
-    Note: This function is currently not working. For one thing it needs code added to correctly handle streamed responses from the remote bot and forward them to the Poe client as they are received.
+    This function uses the `httpx` library with HTTP/2 enabled to send a POST request to the third-party bot.
+    It streams the response as it's received and yields chunks to be relayed to the Poe client.
 
     :param conversation: The Conversation object containing previous messages.
-    :return: A response object from the third-party bot.
+    :return: A generator yielding response chunks from the third-party bot.
     """
     try:
         # Set the headers (Question: Is this headers structure correct and complete?)
@@ -152,7 +153,7 @@ def forward_to_third_party_bot(conversation):
             "Host": "api.poe.com"
         }
 
-        # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete?)
+        # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete? What about conversation_id, user_id, message_id, skip_system_prompt, logit_bias, language_code, metadata, bot_query_id?)
         payload = {
             "version": "1.1",
             "type": "query",
@@ -160,35 +161,53 @@ def forward_to_third_party_bot(conversation):
             "language_code": "en"  # Optional: Adjust based on your use case
         }
 
-        # Prepare the request using a `Request` object
-        request = requests.Request(
-            method='POST',
-            url=THIRD_PARTY_BOT_API_ENDPOINT,
-            headers=headers,
-            json=payload
-        )
-        prepared_request = request.prepare()  # Prepare the request to inspect it
+        # Log the payload for debugging
+        logger.info(f"Payload to third-party bot '{THIRD_PARTY_BOT}': {json.dumps(payload)}")
 
-        # Log the final request details
-        logger.info(f"Outgoing POST request to {prepared_request.url}")
-        logger.info(f"Request headers: {prepared_request.headers}")
-        logger.info(f"Request body: {prepared_request.body}")
+        # Initialize the httpx Client with HTTP/2 enabled
+        with httpx.Client(http2=True, timeout=10.0) as client:
+            # Use client.stream() for streaming responses
+            with client.stream("POST", THIRD_PARTY_BOT_API_ENDPOINT, headers=headers, json=payload, follow_redirects=True) as response:
+                # Raise an exception for bad status codes
+                response.raise_for_status()
 
-        # Send the prepared request using a `Session`
-        # We need to relay the response stream back to the Poe client as we receive it. Reminder: The Poe client requires an initial response within 5 seconds
-        with requests.Session() as session:
-            response = session.send(prepared_request, timeout=10)
+                logger.info(f"Connected to third-party bot '{THIRD_PARTY_BOT}'. Starting to stream responses.")
 
-        # Check if the response was successful (Currently, a RequestException is being thrown: "Response ended prematurely")
-        if response.status_code == 200:
-            logger.info(f"Received response from third-party bot '{THIRD_PARTY_BOT}'.")
-            return response.json()
-        else:
-            logger.error(f"Error from third-party bot '{THIRD_PARTY_BOT}': {response.status_code}, {response.text}")
-            return None
+                # Iterate over the streamed response
+                for chunk in response.iter_text():
+                    if chunk:
+                        logger.info(f"Received chunk from '{THIRD_PARTY_BOT}': {chunk}")
+                        yield chunk  # Yield each chunk to be relayed to the Poe client
+
+        logger.info(f"Finished streaming responses from third-party bot '{THIRD_PARTY_BOT}'.")
+
+    except httpx.RequestError as e:
+        logger.error(f"An error occurred while requesting third-party bot '{THIRD_PARTY_BOT}': {e}")
+        error_event = {
+            "allow_retry": False,
+            "text": "Failed to communicate with the third-party bot.",
+            "error_type": "third_party_request_error"
+        }
+        yield send_event("error", error_event)
+        yield send_event("done", {})
+    except httpx.HTTPStatusError as e:
+        logger.error(f"HTTP error from third-party bot '{THIRD_PARTY_BOT}': {e.response.status_code} - {e.response.text}")
+        error_event = {
+            "allow_retry": False,
+            "text": "Third-party bot returned an error.",
+            "error_type": "third_party_http_error"
+        }
+        yield send_event("error", error_event)
+        yield send_event("done", {})
     except Exception as e:
-        logger.error(f"Exception while communicating with third-party bot '{THIRD_PARTY_BOT}': {e}")
-        return None
+        logger.error(f"Unexpected exception in communicating with third-party bot '{THIRD_PARTY_BOT}': {e}")
+        error_event = {
+            "allow_retry": False,
+            "text": "An internal error occurred while communicating with the third-party bot.",
+            "error_type": "internal_error"
+        }
+        yield send_event("error", error_event)
+        yield send_event("done", {})
 
 def get_random_message():
     # Return a random line from the 'messages.txt' file
@@ -278,28 +297,21 @@ def on_conversation_update(conversation):
         if THIRD_PARTY_BOT and attempt_relay:
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
-            # Relay the conversation to the third-party bot
-            third_party_response = forward_to_third_party_bot(conversation)
+            # Relay the conversation to the third-party bot and get the generator
+            third_party_stream = forward_to_third_party_bot(conversation)
 
-            if third_party_response:
-                # Extract the text content from the third-party bot's response
-                reply_text = third_party_response.get("content", "No response from third-party bot.")
-                return Response(generate_streaming_response_to_user(reply_text), mimetype='text/event-stream')
-            else:
-                # If the third-party bot fails, send an error event
-                error_event = {
-                    "allow_retry": False,
-                    "text": "Failed to retrieve a response from the third-party bot.",
-                    "error_type": "third_party_error"
-                }
-                return Response(
-                    send_event("error", error_event) + send_event("done", {}),
-                    status=200,
-                    mimetype='text/event-stream'
-                )
+            # Stream the third-party bot's response back to the Poe client
+            return Response(
+                generate_streaming_response_to_user(third_party_stream),
+                mimetype='text/event-stream'
+            )
         else:  # No third-party bot specified or relaying disabled; stream back an echo reply
             headers = { "X-Accel-Buffering": "no" }  # Feeble attempt to disable response buffering (doesn't work)
-            return Response(generate_streaming_response_to_user(compose_echo_reply(conversation)), mimetype='text/event-stream', headers=headers)
+            return Response(
+                generate_streaming_response_to_user(compose_echo_reply(conversation)),
+                mimetype='text/event-stream',
+                headers=headers
+            )
     else:
         logger.error(f"Unexpected sender role: {sender}.")
         abort(400, description="Unexpected sender role.")
