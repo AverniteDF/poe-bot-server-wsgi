@@ -141,9 +141,8 @@ def log_outgoing_request(request: httpx.Request):
     logger.info(f"Outgoing HTTP Request to '{request.url}':")
     # Create a copy of headers and mask the ACCESS_KEY so we can log it safely
     headers = mask_access_key_in_headers(request)
-
     logger.info(f"Headers: {json.dumps(headers, indent=2)}")
-    
+
     # Log the body
     if request.content:
         try:
@@ -368,8 +367,6 @@ def log_request_info():
 
     # Create a copy of headers and mask the ACCESS_KEY
     headers = mask_access_key_in_headers(request)
-
-    #logger.info(f"Headers: {headers}")
     logger.info(f"Headers: {json.dumps(headers, indent=2)}")
 
     if request.method == 'POST':
