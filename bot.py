@@ -139,8 +139,9 @@ def log_outgoing_request(request: httpx.Request):
     :param request: The httpx.Request object being sent.
     """
     logger.info(f"Outgoing HTTP Request to '{request.url}':")
-    # Log all headers
-    headers = dict(request.headers)
+    # Create a copy of headers and mask the ACCESS_KEY so we can log it safely
+    headers = mask_access_key_in_headers(request)
+
     logger.info(f"Headers: {json.dumps(headers, indent=2)}")
     
     # Log the body
@@ -185,7 +186,7 @@ def relay_to_third_party_bot(conversation):
             "language_code": "en"  # Optional: Adjust based on your use case
         }
 
-        # Initialize the httpx Client with HTTP/2 enabled
+        # Initialize the httpx Client with HTTP/2 enabled. We use an event hook to log the actual contents of the HTTP POST being sent
         with httpx.Client(http2=True, timeout=10.0, event_hooks={'request': [log_outgoing_request]}) as client:
             # Use client.stream() for streaming responses
             with client.stream("POST", THIRD_PARTY_BOT_API_ENDPOINT, headers=headers, json=payload, follow_redirects=True) as response:
@@ -337,6 +338,26 @@ def on_conversation_update(conversation):
         logger.error(f"Unexpected sender role: {sender}.")
         abort(400, description="Unexpected sender role.")
 
+def mask_access_key_in_headers(request):
+    # Create a copy of headers to avoid modifying the original
+    headers = dict(request.headers)
+
+    # Check if the Authorization header is present and mask the ACCESS_KEY in a case-insensitive manner
+    for key, value in headers.items():
+        if key.lower() == 'authorization':
+            auth = value
+            # Assuming the format is "Bearer <ACCESS_KEY>"
+            parts = auth.split(' ')
+            if len(parts) == 2:
+                auth_type, access_key = parts
+                masked_key = mask_access_key(access_key)
+                headers[key] = f"{auth_type} {masked_key}"
+            else:
+                # If the format is unexpected, mask the entire Authorization header
+                headers[key] = mask_access_key(auth)
+            break
+    return headers
+
 @app.before_request
 def log_request_info():
     """
@@ -345,23 +366,11 @@ def log_request_info():
     """
     logger.info(f"Received {request.method} request on {request.path}")
 
-    # Create a copy of headers to avoid modifying the original request headers
-    headers = dict(request.headers)
+    # Create a copy of headers and mask the ACCESS_KEY
+    headers = mask_access_key_in_headers(request)
 
-    # Check if the Authorization header is present and mask the ACCESS_KEY
-    if 'Authorization' in headers:
-        auth = headers['Authorization']
-        # Assuming the format is "Bearer <ACCESS_KEY>"
-        parts = auth.split(' ')
-        if len(parts) == 2:
-            auth_type, access_key = parts
-            masked_key = mask_access_key(access_key)
-            headers['Authorization'] = f"{auth_type} {masked_key}"
-        else:
-            # If the format is unexpected, mask the entire Authorization header
-            headers['Authorization'] = mask_access_key(auth)
-
-    logger.info(f"Headers: {headers}")
+    #logger.info(f"Headers: {headers}")
+    logger.info(f"Headers: {json.dumps(headers, indent=2)}")
 
     if request.method == 'POST':
         try:
