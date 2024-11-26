@@ -132,7 +132,31 @@ class Conversation:
         last_message = self.query_list[-1]
         return last_message.get('role', 'unknown')
 
-def forward_to_third_party_bot(conversation):
+def log_outgoing_request(request: httpx.Request):
+    """
+    Logs the actual HTTP request headers and body that is sent to the remote third-party bot.
+
+    :param request: The httpx.Request object being sent.
+    """
+    logger.info(f"Outgoing HTTP Request to '{request.url}':")
+    # Log all headers
+    headers = dict(request.headers)
+    logger.info(f"Headers: {json.dumps(headers, indent=2)}")
+    
+    # Log the body
+    if request.content:
+        try:
+            # Attempt to decode as UTF-8 for readable logging
+            body = request.content.decode('utf-8')
+            logger.info(f"Body: {body}")
+        except UnicodeDecodeError:
+            # If binary data, log as hexadecimal
+            body = request.content.hex()
+            logger.info(f"Body (hex): {body}")
+    else:
+        logger.info("Body: None")
+
+def relay_to_third_party_bot(conversation):
     """
     Forwards the conversation to the third-party bot and streams its response back to the Poe client.
 
@@ -161,11 +185,8 @@ def forward_to_third_party_bot(conversation):
             "language_code": "en"  # Optional: Adjust based on your use case
         }
 
-        # Log the payload for debugging
-        logger.info(f"Payload to third-party bot '{THIRD_PARTY_BOT}': {json.dumps(payload)}")
-
         # Initialize the httpx Client with HTTP/2 enabled
-        with httpx.Client(http2=True, timeout=10.0) as client:
+        with httpx.Client(http2=True, timeout=10.0, event_hooks={'request': [log_outgoing_request]}) as client:
             # Use client.stream() for streaming responses
             with client.stream("POST", THIRD_PARTY_BOT_API_ENDPOINT, headers=headers, json=payload, follow_redirects=True) as response:
                 # Raise an exception for bad status codes
@@ -256,7 +277,7 @@ def generate_streaming_response_to_user(text_generator):
             "suggested_replies": False
         }
         yield send_event("meta", meta)
-        logger.info("Bot: Sent 'meta' event.")
+        logger.info("Bot: Sent 'meta' event to Poe client.")
         time.sleep(0.1)  # Simulate processing delay
 
         # Stream the text piece by piece
@@ -298,7 +319,7 @@ def on_conversation_update(conversation):
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
             # Relay the conversation to the third-party bot and get the generator
-            third_party_stream = forward_to_third_party_bot(conversation)
+            third_party_stream = relay_to_third_party_bot(conversation)
 
             # Stream the third-party bot's response back to the Poe client
             return Response(
