@@ -76,6 +76,11 @@ THIRD_PARTY_BOT = 'GPT-4o-Mini'  # Declare which remote bot we will be relaying 
 # Define the third-party bot's API endpoint (Question: Is the URL below correct? Can someone confirm?)
 THIRD_PARTY_BOT_API_ENDPOINT = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
 
+# Define whether to use HTTP/2. You can set this via an environment variable or directly here.
+USE_HTTP2 = os.getenv('USE_HTTP2', 'True').lower() in ['true', '1', 'yes']
+
+logger.info(f"USE_HTTP2 is set to: {USE_HTTP2}")
+
 def mask_access_key(key):
     """
     Masks the ACCESS_KEY by showing the first two and last two characters,
@@ -185,8 +190,8 @@ def relay_to_third_party_bot(conversation):
             "language_code": "en"  # Optional: Adjust based on your use case
         }
 
-        # Initialize the httpx Client with HTTP/2 enabled. We use an event hook to log the actual contents of the HTTP POST being sent
-        with httpx.Client(http2=True, timeout=10.0, event_hooks={'request': [log_outgoing_request]}) as client:
+        # Initialize the httpx Client with HTTP/2 enabled based on USE_HTTP2 variable. We use an event hook to log the actual contents of the HTTP POST being sent
+        with httpx.Client(http2=USE_HTTP2, timeout=10.0, event_hooks={'request': [log_outgoing_request]}) as client:
             # Use client.stream() for streaming responses
             with client.stream("POST", THIRD_PARTY_BOT_API_ENDPOINT, headers=headers, json=payload, follow_redirects=True) as response:
                 # Raise an exception for bad status codes
@@ -286,7 +291,7 @@ def generate_streaming_response_to_user(text_generator):
                 "text": text_part
             }
             yield send_event("text", text_event)
-            logger.info(f"Bot: Sent 'text' event: {text_part.replace("\n", "\\n")}")
+            logger.info(f"Bot: Sent 'text' event: {text_part.replace('\n', '\\n')}")
 
         # Send 'done' event to indicate the end of the response
         done_event = {}
