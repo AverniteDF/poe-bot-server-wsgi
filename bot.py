@@ -71,13 +71,13 @@ logger.addHandler(stderr_handler)
 # Bot Settings
 # Whenever these are changed you must manually prompt Poe's server to make a settings request by running the command: curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
 INTRO_MESSAGE = 'Hello! Be advised that this bot is under development.'
-THIRD_PARTY_BOT = 'GPT-4o-Mini'  # Declare which remote bot we will be relaying messages to and from (Question: Will the remote bot stream its response to this bot or send it all at once?)
+THIRD_PARTY_BOT = 'GPT-4o-Mini'  # Declare which remote bot we will be relaying messages to and from
 
 # Define the third-party bot's API endpoint (Question: Is the URL below correct? Can someone confirm?)
 THIRD_PARTY_BOT_API_ENDPOINT = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
 
-# Define whether to use HTTP/2. You can set this via an environment variable or directly here.
-USE_HTTP2 = os.getenv('USE_HTTP2', 'True').lower() in ['true', '1', 'yes']
+# Define whether to use HTTP/2
+USE_HTTP2 = False
 
 logger.info(f"USE_HTTP2 is set to: {USE_HTTP2}")
 
