@@ -161,36 +161,24 @@ def log_outgoing_request(request: httpx.Request):
     else:
         logger.info("Body: None")
 
-def relay_to_third_party_bot(conversation):
+def relay_to_third_party_bot(headers, payload):
     """
-    Forwards the conversation to the third-party bot and streams its response back to the Poe client.
+    Forwards the request to the third-party bot and streams its response back to the Poe client.
 
     This function uses the `httpx` library with HTTP/2 enabled to send a POST request to the third-party bot.
     It streams the response as it's received and yields chunks to be relayed to the Poe client.
 
-    :param conversation: The Conversation object containing previous messages.
+    :param headers: A copy of the headers from the original request sent from the Poe client.
+    :param payload: The payload from the original request sent from the Poe client.
     :return: A generator yielding response chunks from the third-party bot.
     """
     try:
-        # Set the headers (Question: Is this headers structure correct and complete?)
-        headers = {
-            "Accept": "text/event-stream",
-            "Accept-Encoding": "gzip, deflate, br",
-            "Authorization": f"Bearer {ACCESS_KEY}",
-            "Connection": "keep-alive",
-            "Content-Type": "application/json",
-            "Host": "api.poe.com"
-        }
+        # Remove 'Content-Length' and 'User-Agent' headers in a case-insensitive manner
+        headers = {k: v for k, v in headers.items() if k.lower() not in ['content-length', 'user-agent']}
+        headers['Host'] = 'api.poe.com'  # Update the Host header to the third-party API's host
 
-        # Construct the payload based on the incoming query (Question: Is this payload structure correct and complete? What about conversation_id, user_id, message_id, skip_system_prompt, logit_bias, language_code, metadata, bot_query_id?)
-        payload = {
-            "version": "1.1",
-            "type": "query",
-            "query": conversation.query_list,  # Forward the entire query list
-            "language_code": "en"  # Optional: Adjust based on your use case
-        }
-
-        # Initialize the httpx Client with HTTP/2 enabled based on USE_HTTP2 variable. We use an event hook to log the actual contents of the HTTP POST being sent
+        # Initialize the httpx Client with HTTP/2 enabled based on USE_HTTP2 variable.
+        # An event hook is used to log the actual contents of the HTTP POST being sent.
         with httpx.Client(http2=USE_HTTP2, timeout=10.0, event_hooks={'request': [log_outgoing_request]}) as client:
             # Use client.stream() for streaming responses
             with client.stream("POST", THIRD_PARTY_BOT_API_ENDPOINT, headers=headers, json=payload, follow_redirects=True) as response:
@@ -309,13 +297,35 @@ def generate_streaming_response_to_user(text_generator):
         yield send_event("done", {})
         logger.info("Bot: Sent 'done' event after error.")
 
-def on_conversation_update(conversation):
+def on_conversation_update(request):
     """
     A conversation update was received. The most recent message in the conversation is expected to be from 'user'.
     This (local) bot must either stream a response to the user or forward the conversation to a remote bot and wait for a response.
     If the conversation update came from a user then an initial response (streamed event) must be given within 5 seconds (a rule imposed by Poe).
     Note that bot dependencies must be declared (via response to `settings` request) in order for remote bots to participate.
     """
+    data = request.get_json()
+    # Extract the entire query list
+    try:
+        query_list = data.get('query', [])
+        if not query_list:
+            raise ValueError("Query list is empty.")
+        logger.info(f"Received query list with {len(query_list)} messages.")
+        conversation = Conversation(query_list)
+    except (TypeError, ValueError) as e:
+        logger.error(f"Error extracting query list: {e}")
+        # Send an 'error' event
+        error_event = {
+            "allow_retry": False,
+            "text": "Invalid query format: unable to extract query list.",
+            "error_type": "invalid_query_format"
+        }
+        return Response(
+            send_event("error", error_event) + send_event("done", {}),
+            status=200,
+            mimetype='text/event-stream'
+        )
+
     sender = conversation.sender()
 
     if sender == 'user':
@@ -323,8 +333,8 @@ def on_conversation_update(conversation):
         if THIRD_PARTY_BOT and attempt_relay:
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
-            # Relay the conversation to the third-party bot and get the generator
-            third_party_stream = relay_to_third_party_bot(conversation)
+            # Relay the request to the third-party bot and get the generator
+            third_party_stream = relay_to_third_party_bot(dict(request.headers), request.get_json())
 
             # Stream the third-party bot's response back to the Poe client
             return Response(
@@ -435,29 +445,7 @@ def handle_http_request():
 
         elif request_type == 'query':
             logger.info("Received 'query' type request.")
-
-            # Extract the entire query list
-            try:
-                query_list = data.get('query', [])
-                if not query_list:
-                    raise ValueError("Query list is empty.")
-                logger.info(f"Received query list with {len(query_list)} messages.")
-                conversation = Conversation(query_list)
-            except (TypeError, ValueError) as e:
-                logger.error(f"Error extracting query list: {e}")
-                # Send an 'error' event
-                error_event = {
-                    "allow_retry": False,
-                    "text": "Invalid query format: unable to extract query list.",
-                    "error_type": "invalid_query_format"
-                }
-                return Response(
-                    send_event("error", error_event) + send_event("done", {}),
-                    status=200,
-                    mimetype='text/event-stream'
-                )
-
-            return on_conversation_update(conversation)
+            return on_conversation_update(request)
 
         else:
             logger.warning("Invalid request format: unrecognized 'type'.")
