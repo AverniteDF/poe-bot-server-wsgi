@@ -168,14 +168,14 @@ def relay_to_third_party_bot(headers, payload):
     This function uses the `httpx` library with HTTP/2 enabled to send a POST request to the third-party bot.
     It streams the response as it's received and yields chunks to be relayed to the Poe client.
 
-    :param headers: A copy of the headers from the original request sent from the Poe client.
-    :param payload: The payload from the original request sent from the Poe client.
+    :param headers: A copy of the headers from the incoming request.
+    :param payload: The payload from the incoming request.
     :return: A generator yielding response chunks from the third-party bot.
     """
     try:
-        # Remove 'Content-Length' and 'User-Agent' headers in a case-insensitive manner
+        # Remove 'Content-Length' and 'User-Agent' headers so that httpx client can replace them with correct values
         headers = {k: v for k, v in headers.items() if k.lower() not in ['content-length', 'user-agent']}
-        headers['Host'] = 'api.poe.com'  # Update the Host header to the third-party API's host
+        headers['Host'] = 'api.poe.com'  # Update the Host header to the third-party API's host (maybe this header should just be removed instead)
 
         # Initialize the httpx Client with HTTP/2 enabled based on USE_HTTP2 variable.
         # An event hook is used to log the actual contents of the HTTP POST being sent.
