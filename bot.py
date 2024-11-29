@@ -41,8 +41,8 @@ stderr_log_path = os.path.join(os.path.dirname(__file__), 'stderr.log')
 # Create RotatingFileHandlers
 stdout_handler = RotatingFileHandler(
     stdout_log_path,
-    maxBytes=4*1024*1024,  # 4 MB
-    backupCount=3
+    maxBytes = 1*1024*1024,  # 1 MB
+    backupCount = 3
 )
 stdout_handler.setLevel(logging.INFO)
 stdout_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
@@ -50,8 +50,8 @@ stdout_handler.setFormatter(stdout_formatter)
 
 stderr_handler = RotatingFileHandler(
     stderr_log_path,
-    maxBytes=4*1024*1024,  # 4 MB
-    backupCount=3
+    maxBytes = 1*1024*1024,  # 1 MB
+    backupCount = 3
 )
 stderr_handler.setLevel(logging.ERROR)
 stderr_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
