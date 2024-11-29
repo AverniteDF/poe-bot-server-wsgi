@@ -3,23 +3,16 @@
 """
 WSGI (Synchronous) Bot Server for Poe Platform
 ----------------------------------------------
-This is a partially-implemented bot server that interacts with the Poe platform.
-It is currently capable of echoing messages back to the Poe client/user.
-The ultimate goal is for it to be able to forward user messages to other bots on Poe and relay their responses back to the user.
-The challenge is for all of this to be done in a purely synchronous fashion (no async).
-This means that asynchronous libraries such as `fastapi` and `fastapi_poe` cannot be used.
-At a basic level, interacting with the Poe platform is done via HTTP requests and responses containing JSON.
-It's just formatted data being passed back and forth so we can do it with a custom implementation (once we know what the expected format is).
-If this goal is achieved then it will be possible to create bot servers using WSGI Python web applications, which are easy to set up in cPanel and don't require cloud service.
-These server bots might not handle heavy usage well but should work fine for personal use, experimentation, and light traffic scenarios.
+This bot server uses a purely synchronous implementation (no `async`) and can be deployed as a WSGI Python web application.
+Such applications are easy to set up in cPanel and don't require cloud service (Modal, etc).
 
 A functioning instance of this bot is available on Poe as 'Server-Bot-WSGI' (by @robhewitt).
 The source for this project can be downloaded from GitHub (https://github.com/AverniteDF/poe-bot-server-wsgi).
-Contributors are welcome to help advance this bot, particularly if they have insights into the Poe API's JSON payloads for bot-to-bot communication.
 """
 
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from flask import Flask, request, abort, Response, jsonify
 import httpx
@@ -45,13 +38,21 @@ if not BOT_NAME:
 stdout_log_path = os.path.join(os.path.dirname(__file__), 'stdout.log')
 stderr_log_path = os.path.join(os.path.dirname(__file__), 'stderr.log')
 
-# Create handlers
-stdout_handler = logging.FileHandler(stdout_log_path)
+# Create RotatingFileHandlers
+stdout_handler = RotatingFileHandler(
+    stdout_log_path,
+    maxBytes=4*1024*1024,  # 4 MB
+    backupCount=3
+)
 stdout_handler.setLevel(logging.INFO)
 stdout_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
 stdout_handler.setFormatter(stdout_formatter)
 
-stderr_handler = logging.FileHandler(stderr_log_path)
+stderr_handler = RotatingFileHandler(
+    stderr_log_path,
+    maxBytes=4*1024*1024,  # 4 MB
+    backupCount=3
+)
 stderr_handler.setLevel(logging.ERROR)
 stderr_formatter = logging.Formatter('%(asctime)s %(levelname)s: %(message)s')
 stderr_handler.setFormatter(stderr_formatter)
