@@ -167,7 +167,7 @@ def relay_to_third_party_bot(headers, payload):
     """
     Forwards the request to the third-party bot and streams its response back to the Poe client.
 
-    This function uses the `httpx` library with HTTP/2 enabled to send a POST request to the third-party bot.
+    This function uses the `httpx` library to send a POST request to the third-party bot.
     It streams the response as it's received and yields chunks to be relayed to the Poe client.
 
     :param headers: A copy of the headers from the incoming request.
@@ -224,18 +224,6 @@ def relay_to_third_party_bot(headers, payload):
         yield send_event("error", error_event)
         yield send_event("done", {})
 
-def get_random_message():
-    # Return a random line from the 'messages.txt' file
-    try:
-        with open('messages.txt', 'r') as file:
-            lines = file.readlines()
-            if lines:
-                return random.choice(lines).strip()
-            else:
-                return "No additional messages available."
-    except FileNotFoundError:
-        return "Error: messages.txt file not found."
-
 def compose_echo_reply(conversation):
     """
     Generator that yields the user's messages in ALL CAPS, one chunk at a time.
@@ -243,9 +231,6 @@ def compose_echo_reply(conversation):
     user_messages_uppercase = [message.upper() for message in conversation.get_messages('user')]
     combined_message = '\n'.join(user_messages_uppercase)
 
-    # We'll also tack on a random message to make the reply longer
-    combined_message = combined_message + '\n\n---\n\n' + get_random_message()
-    
     chunk_size = 10  # Number of characters to send at a time
     for i in range(0, len(combined_message), chunk_size):
         yield combined_message[i:i+chunk_size]
