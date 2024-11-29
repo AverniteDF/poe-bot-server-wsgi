@@ -4,14 +4,12 @@ This project aims to build a fully functional server bot for the [Poe platform](
 
 A functioning instance of this bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
 
-The ultimate goal of this project is to allow the bot to forward user messages to other bots on Poe and relay their responses back to the user. Currently, the bot echoes user messages in uppercase but will be extended with more functionality as the expected JSON payloads for bot-to-bot communication become clearer.
-
 ## Features
 
 - **Synchronous (no async)**: The bot is implemented using synchronous Python, making it compatible with standard WSGI-based web hosting environments.
 - **Flask-based**: Built using the Flask microframework to handle HTTP requests and responses.
 - **Logging**: Logs requests and responses for easier debugging and monitoring.
-- **Echo Bot**: Responds to user input by echoing it back in uppercase (for now).
+- **Chat Relay**: Forwards user messages to a third-party bot on Poe and relays the responses back.
 
 ## Setup Instructions
 
@@ -50,22 +48,6 @@ To link your web app to Poe, you need to create a server bot profile.
 8. Click "Check reachability" to test the connection between Poe and your web app. If there are issues, try restarting the app.
 9. Once the connection is successful, click "Create bot".
 10. Start a chat with your new server bot on Poe to see it in action!
-
-## Contributing
-
-Are you familiar with the Poe platform's API or have insight into the JSON payloads used for bot-to-bot communication? Contributions are welcome!
-
-This project is in active development and one key challenge is understanding the specifics of how bots on Poe interact with each other. If you have information or code related to this, particularly regarding the format of JSON payloads for requests and responses, your help would be greatly appreciated!
-
-Here's how you can contribute:
-
-1. Fork the repository.
-2. Create a new branch (`git checkout -b feature/new-feature`).
-3. Commit your changes (`git commit -m 'Add some feature'`).
-4. Push to the branch (`git push origin feature/new-feature`).
-5. Open a pull request.
-
-Please feel free to open issues or reach out if you have any questions or ideas!
 
 ## License
 
