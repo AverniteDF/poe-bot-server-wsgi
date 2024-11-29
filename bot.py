@@ -329,20 +329,20 @@ def on_conversation_update(request):
     sender = conversation.sender()
 
     if sender == 'user':
-        attempt_relay = False  # For testing purposes we can enable or disable
+        attempt_relay = True  # For testing purposes, you can enable or disable
         if THIRD_PARTY_BOT and attempt_relay:
             logger.info(f"Received conversation update from user. Forwarding to '{THIRD_PARTY_BOT}'.")
 
             # Relay the request to the third-party bot and get the generator
             third_party_stream = relay_to_third_party_bot(dict(request.headers), request.get_json())
 
-            # Stream the third-party bot's response back to the Poe client
+            # Directly stream the third-party bot's response back to the Poe client
             return Response(
-                generate_streaming_response_to_user(third_party_stream),
+                third_party_stream,
                 mimetype='text/event-stream'
             )
         else:  # No third-party bot specified or relaying disabled; stream back an echo reply
-            headers = { "X-Accel-Buffering": "no" }  # Feeble attempt to disable response buffering (doesn't work)
+            headers = {"X-Accel-Buffering": "no"}  # Feeble attempt to disable response buffering (doesn't work)
             return Response(
                 generate_streaming_response_to_user(compose_echo_reply(conversation)),
                 mimetype='text/event-stream',
