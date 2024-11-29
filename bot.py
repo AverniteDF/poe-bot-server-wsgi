@@ -4,10 +4,11 @@
 WSGI (Synchronous) Bot Server for Poe Platform
 ----------------------------------------------
 This bot server uses a purely synchronous implementation (no `async`) and can be deployed as a WSGI Python web application.
-Such applications are easy to set up in cPanel and don't require cloud service (Modal, etc).
+Such applications are easy to set up in cPanel and don't require VPS or cloud services (Modal, etc).
 
 A functioning instance of this bot is available on Poe as 'Server-Bot-WSGI' (by @robhewitt).
-The source for this project can be downloaded from GitHub (https://github.com/AverniteDF/poe-bot-server-wsgi).
+The updated source for this project can be downloaded from GitHub (https://github.com/AverniteDF/poe-bot-server-wsgi).
+You may modify this code and use it in your own server bot projects. Suitable for experimentation and light traffic scenarios.
 """
 
 import os
