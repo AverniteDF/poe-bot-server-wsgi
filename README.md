@@ -1,12 +1,12 @@
 # poe-bot-server-wsgi
 
-This repo shows how to create a server bot for the [Poe platform](https://poe.com/) using a WSGI Python web application. The bot is implemented in a purely synchronous manner, making it easy to set up via cPanel.
+This repo shows how to create a server bot for the [Poe platform](https://poe.com/) using a WSGI Python web application.
 
 A functioning instance of this bot is available on Poe as [Server-Bot-WSGI](https://poe.com/Server-Bot-WSGI) (by @robhewitt).
 
 ## Features
 
-- **Synchronous (no async)**: The bot is implemented using synchronous Python, making it compatible with standard WSGI-based web hosting environments.
+- **Synchronous (no async)**: The bot is implemented using synchronous Python, making it compatible with standard WSGI-based web hosting environments (no need for cloud service).
 - **Flask-based**: Built using the Flask microframework to handle HTTP requests and responses.
 - **Logging**: Logs requests and responses for easier debugging and monitoring.
 - **Chat Relay**: Forwards user messages to a third-party bot on Poe and relays the responses back.
