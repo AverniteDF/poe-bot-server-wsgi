@@ -70,10 +70,10 @@ logger.addHandler(stderr_handler)
 
 # Bot Settings
 # Whenever these are changed you must manually prompt Poe's server to make a settings request by running the command: curl -X POST https://api.poe.com/bot/fetch_settings/<BOT_NAME>/<ACCESS_KEY>
-INTRO_MESSAGE = 'Hello! Be advised that this bot is under development.'
 THIRD_PARTY_BOT = 'GPT-4o-Mini'  # Declare which remote bot we will be relaying messages to and from
+INTRO_MESSAGE = f"Hello! Your messages are being relayed to {THIRD_PARTY_BOT}."
 
-# Define the third-party bot's API endpoint (Question: Is the URL below correct? Can someone confirm?)
+# Define the third-party bot's API endpoint
 THIRD_PARTY_BOT_API_ENDPOINT = f"https://api.poe.com/bot/{THIRD_PARTY_BOT}"
 
 # Define whether to use HTTP/2
@@ -173,9 +173,8 @@ def relay_to_third_party_bot(headers, payload):
     :return: A generator yielding response chunks from the third-party bot.
     """
     try:
-        # Remove 'Content-Length' and 'User-Agent' headers so that httpx client can replace them with correct values
-        headers = {k: v for k, v in headers.items() if k.lower() not in ['content-length', 'user-agent']}
-        headers['Host'] = 'api.poe.com'  # Update the Host header to the third-party API's host (maybe this header should just be removed instead)
+        # Remove 'Content-Length', 'User-Agent', and 'Host' headers so that httpx client can replace them with correct values
+        headers = {k: v for k, v in headers.items() if k.lower() not in ['content-length', 'user-agent', 'host']}
 
         # Initialize the httpx Client with HTTP/2 enabled based on USE_HTTP2 variable.
         # An event hook is used to log the actual contents of the HTTP POST being sent.
@@ -245,7 +244,7 @@ def compose_echo_reply(conversation):
     # We'll also tack on a random message to make the reply longer
     combined_message = combined_message + '\n\n---\n\n' + get_random_message()
     
-    chunk_size = 10  # Max number of characters to send at a time
+    chunk_size = 10  # Number of characters to send at a time
     for i in range(0, len(combined_message), chunk_size):
         yield combined_message[i:i+chunk_size]
         time.sleep(0.1)  # Slight delay to simulate streaming
